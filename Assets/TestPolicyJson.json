@@ -1,0 +1,8 @@
+{
+  "tutorialVersion": "1.0.0",
+  "variant": "A",
+  "hintDelaySeconds": 2.0,
+  "showArrow": true,
+  "maxFailCount": 2,
+  "assistEnabled": true
+}
