@@ -132,10 +132,7 @@ public class TutorialUIController : MonoBehaviour
     /// </summary>
     private void OnApplyPolicyAClicked()
     {
-        if (policyApplier == null) return;
-
-        Debug.Log("[TutorialUI] Applying Policy A...");
-        policyApplier.ApplyPolicyFromServer(PolicyExamples.PolicyA);
+        ApplyPolicy(PolicyExamples.PolicyA, "A");
     }
 
     /// <summary>
@@ -143,10 +140,35 @@ public class TutorialUIController : MonoBehaviour
     /// </summary>
     private void OnApplyPolicyBClicked()
     {
-        if (policyApplier == null) return;
+        ApplyPolicy(PolicyExamples.PolicyB, "B");
+    }
 
-        Debug.Log("[TutorialUI] Applying Policy B...");
-        policyApplier.ApplyPolicyFromServer(PolicyExamples.PolicyB);
+    /// <summary>
+    /// 정책 적용 공통 로직
+    /// </summary>
+    private void ApplyPolicy(string policyJson, string policyName)
+    {
+        if (policyApplier == null || tutorialController == null) return;
+
+        Debug.Log($"[TutorialUI] Policy {policyName} 버튼 클릭");
+        
+        // 1. 정책 적용
+        policyApplier.ApplyPolicyFromServer(policyJson);
+        
+        // 2. 적용된 정책 가져오기
+        var policy = policyApplier.GetCurrentPolicy();
+        string currentPolicyJson = policyApplier.GetCurrentPolicyJson();
+        
+        if (policy == null)
+        {
+            Debug.LogError($"[TutorialUI] Policy {policyName}를 가져올 수 없습니다!");
+            return;
+        }
+        
+        Debug.Log($"[TutorialUI] Policy {policyName} 적용 완료 - variant: '{policy.variant}'");
+        
+        // 3. 새 Run 시작
+        tutorialController.StartNewRunWithPolicy(policy, currentPolicyJson);
     }
 }
 

@@ -429,7 +429,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tutorialController: {fileID: 262910284}
   policyApplier: {fileID: 262910285}
-  autoSimulate: 1
+  autoSimulate: 0
   simulationDelay: 1
 --- !u!114 &262910284
 MonoBehaviour:

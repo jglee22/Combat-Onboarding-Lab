@@ -66,15 +66,18 @@ public class RunReport
             policySnapshot = TutorialPolicy.GetDefault();
         }
         
+        // variant 설정 (policySnapshot.variant를 정확히 사용)
+        string variantValue = string.IsNullOrEmpty(policySnapshot.variant) ? "A" : policySnapshot.variant;
+        
         this.run = new RunMetadata
         {
             startTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             seed = seed,
-            variant = string.IsNullOrEmpty(policySnapshot.variant) ? "A" : policySnapshot.variant,
+            variant = variantValue,
             appVersion = Application.version,
             tutorialVersion = string.IsNullOrEmpty(policySnapshot.tutorialVersion) ? "1.0.0" : policySnapshot.tutorialVersion
         };
-        this.policy = policySnapshot; // 스냅샷 저장 (객체 형태)
+        this.policy = policySnapshot;
         this.policyData = !string.IsNullOrEmpty(policyJson) ? policyJson : policySnapshot.ToJson(); // 실제 로드값 저장 (JSON 문자열)
         this.summary = new RunSummary();
         this.events = new List<TutorialEvent>();
