@@ -1,7 +1,7 @@
-## 이 레포를 어떻게 보면 좋은지
+## 프로젝트 소개
 
 이 프로젝트는 **완성된 게임**이 아닙니다.  
-대신 아래를 코드로 증명하는 데 집중합니다.
+전투 튜토리얼의 구조와 운영 방식을 구현하는 데 집중합니다.
 
 ### 핵심 가치
 
@@ -33,7 +33,7 @@
 - 실시간 멀티플레이어
 - 서버 API 통신 (정책 로딩/로그 전송)
 
-이 프로젝트는 "어떻게 전투를 가르칠 것인가"에 대한 구조적 답변을 코드로 증명하는 데 집중합니다.
+이 프로젝트는 "어떻게 전투를 가르칠 것인가"에 대한 구조적 답변을 구현하는 데 집중합니다.
 
 
 ## 프로젝트 개요
@@ -270,7 +270,7 @@ if (policyApplier.ShouldTransitionToAssist(failCount))
 }
 ```
 
-이 구조는 "클린 아키텍처"라기보다, **라이브 게임에서 흔히 쓰는 책임 분리 구조**로 점수가 높습니다.
+이 구조는 "클린 아키텍처"라기보다, **라이브 게임에서 흔히 쓰는 책임 분리 구조**입니다.
 
 ### 정책 변경 시 UI 업데이트
 
@@ -294,9 +294,8 @@ if (policyApplier.ShouldTransitionToAssist(failCount))
 
 ### 설계 목적
 
-- 튜토리얼이 전투 구현에 의존하지 않음을 증명
-- "구조 설계자" 포지션을 확실히 보여주기
-- 전투를 만들 필요 없음, 전투에서 뭘 보고 판단할지만 정의
+- 튜토리얼이 전투 구현에 의존하지 않도록 설계
+- 전투를 만들 필요 없이, 전투에서 뭘 보고 판단할지만 정의
 
 ### 인터페이스 정의
 
@@ -306,6 +305,7 @@ public interface ICombatEventSource
     event Action OnPlayerHit;        // 플레이어가 공격했을 때
     event Action OnPlayerDamaged;    // 플레이어가 피해를 입었을 때
     event Action OnEnemyDefeated;    // 적이 패배했을 때
+    event Action OnPlayerDefeated;   // 플레이어가 패배했을 때
 }
 ```
 
@@ -313,7 +313,7 @@ public interface ICombatEventSource
 
 - **인터페이스 정의**: `Assets/Client/Tutorial/ICombatEventSource.cs`
 - **가짜 전투 이벤트 소스 (테스트용)**: `Assets/Client/Tutorial/MockCombatEventSource.cs`
-- **전투 이벤트 리포터**: `Assets/Client/Tutorial/CombatEventReporter.cs`
+- **실제 전투 이벤트 소스**: `Assets/Client/Tutorial/CombatEventSource.cs`
 
 ### TutorialController 연결
 
@@ -322,9 +322,9 @@ TutorialController는 ICombatEventSource를 구독하여 전투 이벤트에 반
 - `OnPlayerDamaged` → `OnFailure()` 호출 → `failCount` 증가
 - `OnEnemyDefeated` → `OnSuccess()` 호출 → `Clear` 상태
 
-**이벤트가 튜토리얼 흐름을 움직이는 증거:**
-- 가짜 전투라도 좋으니, 이벤트가 튜토리얼 흐름을 움직이는 걸 보여줌
-- 실제 전투 구현 없이도 튜토리얼 흐름 제어가 가능함을 증명
+**이벤트 기반 튜토리얼 흐름 제어:**
+- 가짜 전투라도 이벤트가 튜토리얼 흐름을 움직임
+- 실제 전투 구현 없이도 튜토리얼 흐름 제어가 가능
 
 
 ## RunReport 로그 시스템
@@ -454,23 +454,6 @@ RunReport는 두 가지 형태로 정책을 저장합니다:
 - **RunSummary**: `Assets/Client/Tutorial/RunSummary.cs`
 - **TutorialEvent**: `Assets/Client/Tutorial/TutorialEvent.cs`
 
-### CombatTutorialLog (레거시)
-
-간단한 통계용 로그도 제공됩니다:
-
-```csharp
-public class CombatTutorialLog
-{
-    public string timestamp;        // 로그 생성 시점 (ISO 8601 형식)
-    public string tutorialVersion;  // 정책 버전 추적
-    public string variant;          // A/B 테스트 결과 분석
-    public int failCount;           // 실패 패턴 분석
-    public float clearTime;         // 튜토리얼 난이도 측정
-    public int damageTaken;         // 전투 이해도 측정
-}
-```
-
-**참고**: 현재는 `RunReport`가 주 로그 시스템이며, `CombatTutorialLog`는 간단한 요약용으로 사용됩니다.
 
 
 ## 튜토리얼 상태 전환 흐름 시연
@@ -501,7 +484,7 @@ Clear
 ### 이 파일 하나로:
 
 - ✅ 상태 머신이 머릿속이 아니라 코드에서 보이고
-- ✅ "운영 가능한 튜토리얼"이라는 말이 증명됨
+- ✅ "운영 가능한 튜토리얼" 구조를 보여줌
 
 ### 구현 위치
 
@@ -780,7 +763,7 @@ Clear
 
 ### 런타임 정책 교체 데모
 
-**"클라 재배포 없이 조정"이 데모로 증명됩니다.**
+**"클라 재배포 없이 조정"이 가능합니다.**
 
 Unity 에디터에서:
 1. **Apply Policy A 버튼 클릭**
@@ -809,11 +792,11 @@ Assets/Client/Tutorial/
 ├── TutorialState.cs            # 튜토리얼 상태 enum
 ├── TutorialController.cs       # 튜토리얼 중앙 컨트롤러 (흐름 제어 + RunReport)
 ├── TutorialFlowDriver.cs       # 상태 전환 흐름 시연 드라이버
-├── TutorialStateMachine.cs     # 상태 머신 (선택적 사용)
 ├── ICombatEventSource.cs       # 전투 이벤트 인터페이스
+├── CombatEventSource.cs        # 전투 이벤트 소스 (Player/Enemy 연결)
 ├── MockCombatEventSource.cs    # 가짜 전투 이벤트 소스 (테스트용)
-├── CombatEventReporter.cs      # 전투 이벤트 리포터
-├── CombatTutorialLog.cs        # 전투 튜토리얼 로그 DTO (최종 결과 요약)
+├── Player.cs                   # 플레이어 컴포넌트
+├── Enemy.cs                    # 에너미 컴포넌트
 ├── RunReport.cs                # RunReport (상세 이벤트 추적)
 ├── RunMetadata.cs              # 런 메타데이터
 ├── RunSummary.cs               # 런 요약 정보
@@ -828,7 +811,8 @@ Assets/Client/Tutorial/
 - ✅ UI 업데이트: 정책 변경 시 화살표 On/Off 정상 작동
 - ✅ RunReport 생성: 상세 이벤트 로깅 및 JSON 저장 정상 작동
 - ✅ 정책 스냅샷: `policy`와 `policyData` 정상 저장
-- ✅ 전투 이벤트 연결: OnPlayerDamaged → OnFailure(), OnEnemyDefeated → OnSuccess()
+- ✅ 전투 이벤트 연결: OnPlayerDamaged → OnFailure(), OnEnemyDefeated → OnSuccess(), OnPlayerDefeated → HandlePlayerDefeated()
+- ✅ 전투 결과 저장: 플레이어 사망/에너미 처치 시 자동으로 RunReport 생성 및 저장
 - ✅ 로그 파일 저장: `Application.persistentDataPath/Reports/` 경로에 정상 저장
 
 
@@ -846,7 +830,8 @@ Assets/Client/Tutorial/
 2. **컴포넌트 연결**
    - GameObject에 `TutorialController`, `PolicyApplier`, `TutorialUIController` 추가
    - `TutorialUIController` Inspector에서 모든 필드 연결
-   - `MockCombatEventSource` 또는 `CombatEventReporter` 추가 (전투 이벤트 발생용)
+   - `CombatEventSource` 또는 `MockCombatEventSource` 추가 (전투 이벤트 발생용)
+   - `Player`와 `Enemy` GameObject에 각각 컴포넌트 추가
 
 3. **테스트 방법**
    - **AutoSimulate**: `TutorialFlowDriver`의 `autoSimulate` 체크 → Play
@@ -874,30 +859,14 @@ Unity의 `JsonUtility`는 `object` 타입을 직접 직렬화하지 않습니다
 - **`ConvertPolicyDataToObject()`**: `policyData` 문자열을 JSON 객체로 변환
 - **`SerializeDataObject()`**: 리플렉션을 사용하여 `object` 타입을 JSON으로 직렬화
 
-### 정책 초기화 순서
+### 정책 초기화 및 RunReport 생성
 
-1. `PolicyApplier.Start()` → `InitializePolicy()` 호출
-2. `TutorialController.Start()` → `InitializeRunReportWhenReady()` 코루틴 시작
-3. 코루틴에서 `PolicyApplier`가 준비될 때까지 대기
-4. `InitializeRunReport()` 호출:
-   - `policyApplier.GetCurrentPolicy()` → 실제 적용된 정책 객체 가져오기
-   - `policyApplier.GetCurrentPolicyJson()` → 원본 JSON 문자열 가져오기
-   - 정책이 빈 값이면 기본값으로 채우기
-   - `RunReport` 생성 및 `RUN_START` 이벤트 추가
+1. `PolicyApplier.Start()` → `InitializePolicy()` 호출하여 기본 정책 로드
+2. 정책 버튼 클릭 시 (`TutorialUIController`):
+   - `PolicyApplier.ApplyPolicyFromServer()` → 정책 적용
+   - `TutorialController.StartNewRunWithPolicy()` → 새 RunReport 생성
+3. 전투 결과 발생 시 (플레이어 사망/에너미 처치):
+   - RunReport가 없으면 현재 정책으로 자동 생성
+   - 전투 결과에 따라 `FAIL` 또는 `CLEAR`로 저장
 
-이 순서를 통해 정책이 완전히 로드된 후에만 `RunReport`가 초기화되어, `tutorialVersion`과 `variant`가 정확히 저장됩니다.
-
-
-## 면접에서 강조할 점
-
-> "서버 전송은 아직 붙이지 않았지만, 운영에 필요한 데이터가 어떻게 구조화되고 누적되는지까지는 구현했습니다."
-
-이 문구는 매우 강력합니다.
-
-### 추가 강조 포인트
-
-1. **정책 기반 운영**: 코드 변경 없이 JSON만으로 UX 조정 가능
-2. **느슨한 결합**: 전투 구현과 튜토리얼 완전 분리
-3. **상세 로깅**: RunReport로 전체 플레이 과정 추적 가능
-4. **A/B 테스트 지원**: `variant` 필드로 정책 효과 측정
-5. **메모리 효율**: 이벤트마다 파일 쓰지 않고, 런 종료 시 한 번에 저장
+이 구조를 통해 정책이 변경될 때마다 새로운 RunReport가 생성되어, 각 정책 variant별로 로그가 분리되어 저장됩니다.

@@ -53,7 +53,6 @@ public class TutorialController : MonoBehaviour
     private void Start()
     {
         Debug.Log("[TutorialController] ===== Start() 호출됨 =====");
-        Debug.Log($"[TutorialController] GameObject 이름: {gameObject.name}");
         
         if (policyApplier == null)
         {
@@ -206,6 +205,49 @@ public class TutorialController : MonoBehaviour
     }
 
     /// <summary>
+    /// RunReport가 없으면 현재 정책으로 자동 생성
+    /// </summary>
+    private void EnsureRunReportExists(string autoCreateReason)
+    {
+        if (runReport != null) return;
+
+        Debug.LogWarning("[TutorialController] runReport가 없어서 현재 정책으로 자동 생성합니다.");
+        
+        TutorialPolicy policy = null;
+        string policyJson = null;
+        
+        // PolicyApplier에서 현재 정책 가져오기
+        if (policyApplier != null)
+        {
+            policy = policyApplier.GetCurrentPolicy();
+            policyJson = policyApplier.GetCurrentPolicyJson();
+        }
+        
+        // 정책이 없으면 기본 정책 사용
+        if (policy == null)
+        {
+            policy = TutorialPolicy.GetDefault();
+            policyJson = policy.ToJson();
+            Debug.LogWarning("[TutorialController] PolicyApplier가 없거나 정책이 없어서 기본 정책을 사용합니다.");
+        }
+        
+        // RunReport 생성
+        int seed = UnityEngine.Random.Range(0, int.MaxValue);
+        runReport = new RunReport(policy, policyJson, seed);
+        
+        // RUN_START 이벤트 추가 (늦은 시작)
+        runReport.AddEvent(TutorialEventType.RUN_START, new
+        {
+            appVersion = Application.version,
+            policyVariant = policy.variant,
+            tutorialVersion = policy.tutorialVersion,
+            reason = autoCreateReason
+        });
+        
+        Debug.Log($"[TutorialController] RunReport 자동 생성 완료 (variant: {policy.variant})");
+    }
+
+    /// <summary>
     /// 적 처치 이벤트 처리 → OnSuccess()
     /// </summary>
     private void HandleEnemyDefeated()
@@ -213,45 +255,7 @@ public class TutorialController : MonoBehaviour
         Debug.Log("[TutorialController] ===== HandleEnemyDefeated 호출됨 =====");
         Debug.Log($"[TutorialController] runReport null 여부: {runReport == null}");
         
-        // runReport가 없으면 현재 정책으로 자동 생성
-        if (runReport == null)
-        {
-            Debug.LogWarning("[TutorialController] runReport가 없어서 현재 정책으로 자동 생성합니다.");
-            
-            TutorialPolicy policy = null;
-            string policyJson = null;
-            
-            // PolicyApplier에서 현재 정책 가져오기
-            if (policyApplier != null)
-            {
-                policy = policyApplier.GetCurrentPolicy();
-                policyJson = policyApplier.GetCurrentPolicyJson();
-            }
-            
-            // 정책이 없으면 기본 정책 사용
-            if (policy == null)
-            {
-                policy = TutorialPolicy.GetDefault();
-                policyJson = policy.ToJson();
-                Debug.LogWarning("[TutorialController] PolicyApplier가 없거나 정책이 없어서 기본 정책을 사용합니다.");
-            }
-            
-            // RunReport 생성
-            int seed = UnityEngine.Random.Range(0, int.MaxValue);
-            runReport = new RunReport(policy, policyJson, seed);
-            
-            // RUN_START 이벤트 추가 (늦은 시작)
-            runReport.AddEvent(TutorialEventType.RUN_START, new
-            {
-                appVersion = Application.version,
-                policyVariant = policy.variant,
-                tutorialVersion = policy.tutorialVersion,
-                reason = "Auto-created on enemy defeat"
-            });
-            
-            Debug.Log($"[TutorialController] RunReport 자동 생성 완료 (variant: {policy.variant})");
-        }
-        
+        EnsureRunReportExists("Auto-created on enemy defeat");
         OnSuccess();
     }
 
@@ -264,44 +268,7 @@ public class TutorialController : MonoBehaviour
         Debug.Log($"[TutorialController] runReport null 여부: {runReport == null}");
         Debug.Log($"[TutorialController] combatEventSource null 여부: {combatEventSource == null}");
 
-        // runReport가 없으면 현재 정책으로 자동 생성
-        if (runReport == null)
-        {
-            Debug.LogWarning("[TutorialController] runReport가 없어서 현재 정책으로 자동 생성합니다.");
-            
-            TutorialPolicy policy = null;
-            string policyJson = null;
-            
-            // PolicyApplier에서 현재 정책 가져오기
-            if (policyApplier != null)
-            {
-                policy = policyApplier.GetCurrentPolicy();
-                policyJson = policyApplier.GetCurrentPolicyJson();
-            }
-            
-            // 정책이 없으면 기본 정책 사용
-            if (policy == null)
-            {
-                policy = TutorialPolicy.GetDefault();
-                policyJson = policy.ToJson();
-                Debug.LogWarning("[TutorialController] PolicyApplier가 없거나 정책이 없어서 기본 정책을 사용합니다.");
-            }
-            
-            // RunReport 생성
-            int seed = UnityEngine.Random.Range(0, int.MaxValue);
-            runReport = new RunReport(policy, policyJson, seed);
-            
-            // RUN_START 이벤트 추가 (늦은 시작)
-            runReport.AddEvent(TutorialEventType.RUN_START, new
-            {
-                appVersion = Application.version,
-                policyVariant = policy.variant,
-                tutorialVersion = policy.tutorialVersion,
-                reason = "Auto-created on player defeat"
-            });
-            
-            Debug.Log($"[TutorialController] RunReport 자동 생성 완료 (variant: {policy.variant})");
-        }
+        EnsureRunReportExists("Auto-created on player defeat");
 
         Debug.Log("[TutorialController] Player defeated - RunReport 저장 시작");
 
