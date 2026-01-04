@@ -26,5 +26,10 @@ public interface ICombatEventSource
     /// 적이 패배했을 때 발생하는 이벤트
     /// </summary>
     event Action OnEnemyDefeated;
+
+    /// <summary>
+    /// 플레이어가 패배했을 때 발생하는 이벤트
+    /// </summary>
+    event Action OnPlayerDefeated;
 }
 

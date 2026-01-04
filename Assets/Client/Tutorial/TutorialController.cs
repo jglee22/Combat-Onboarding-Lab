@@ -19,7 +19,12 @@ public class TutorialController : MonoBehaviour
 {
     [Header("의존성")]
     [SerializeField] private PolicyApplier policyApplier;
-    [SerializeField] private ICombatEventSource combatEventSource;
+    
+    [Header("전투 이벤트 소스 (자동으로 찾거나 수동으로 연결)")]
+    [Tooltip("CombatEventSource 또는 MockCombatEventSource 컴포넌트 참조. 비어있으면 씬에서 자동으로 찾습니다.")]
+    [SerializeField] private MonoBehaviour combatEventSourceMonoBehaviour;
+    
+    private ICombatEventSource combatEventSource;
 
     [Header("현재 상태")]
     [SerializeField] private TutorialState currentState = TutorialState.Init;
@@ -37,39 +42,146 @@ public class TutorialController : MonoBehaviour
     // 이벤트: 상태 변경 시 외부에 알림
     public event Action<TutorialState> OnStateChanged;
 
+    private void Awake()
+    {
+        Debug.Log("[TutorialController] ===== Awake() 호출됨 =====");
+        Debug.Log($"[TutorialController] GameObject 이름: {gameObject.name}");
+        Debug.Log($"[TutorialController] GameObject 활성화 여부: {gameObject.activeSelf}");
+        Debug.Log($"[TutorialController] 컴포넌트 활성화 여부: {enabled}");
+    }
+
     private void Start()
     {
+        Debug.Log("[TutorialController] ===== Start() 호출됨 =====");
+        Debug.Log($"[TutorialController] GameObject 이름: {gameObject.name}");
+        
         if (policyApplier == null)
         {
             policyApplier = GetComponent<PolicyApplier>();
             if (policyApplier == null)
             {
-                Debug.LogError("PolicyApplier가 필요합니다!");
+                Debug.LogError("[TutorialController] PolicyApplier가 필요합니다!");
             }
         }
 
-        // 전투 이벤트 소스 연결
-        if (combatEventSource == null)
-        {
-            combatEventSource = GetComponent<ICombatEventSource>();
-            if (combatEventSource == null)
-            {
-                combatEventSource = FindObjectOfType<MonoBehaviour>() as ICombatEventSource;
-            }
-        }
-
-        // 전투 이벤트 구독
-        if (combatEventSource != null)
-        {
-            combatEventSource.OnPlayerDamaged += HandlePlayerDamaged;
-            combatEventSource.OnEnemyDefeated += HandleEnemyDefeated;
-        }
+        // 전투 이벤트 소스 연결 및 구독
+        TryConnectCombatEventSource();
+        SubscribeToCombatEvents();
 
         // 튜토리얼 시작 시간 기록
         tutorialStartTime = Time.time;
 
         // 초기 상태로 전환
         ChangeState(TutorialState.Init);
+    }
+
+    /// <summary>
+    /// CombatEventSource 연결 시도
+    /// </summary>
+    private void TryConnectCombatEventSource()
+    {
+        if (combatEventSource != null)
+        {
+            Debug.Log($"[TutorialController] CombatEventSource가 이미 연결되어 있습니다: {combatEventSource.GetType().Name}");
+            return;
+        }
+
+        Debug.Log("[TutorialController] ===== CombatEventSource를 찾는 중... =====");
+        
+        // 먼저 Inspector에서 할당된 MonoBehaviour를 ICombatEventSource로 캐스팅
+        if (combatEventSourceMonoBehaviour != null)
+        {
+            Debug.Log($"[TutorialController] Inspector에 할당된 MonoBehaviour 확인: {combatEventSourceMonoBehaviour.GetType().Name} ({combatEventSourceMonoBehaviour.gameObject.name})");
+            combatEventSource = combatEventSourceMonoBehaviour as ICombatEventSource;
+            if (combatEventSource != null)
+            {
+                Debug.Log($"[TutorialController] Inspector에서 할당된 CombatEventSource를 사용합니다: {combatEventSourceMonoBehaviour.gameObject.name}");
+                return;
+            }
+            else
+            {
+                Debug.LogError($"[TutorialController] ⚠️ 할당된 MonoBehaviour가 ICombatEventSource를 구현하지 않습니다!");
+                Debug.LogError($"[TutorialController] 타입: {combatEventSourceMonoBehaviour.GetType().Name}");
+                Debug.LogError($"[TutorialController] GameObject: {combatEventSourceMonoBehaviour.gameObject.name}");
+                Debug.LogError($"[TutorialController] Unity Inspector에서 'Combat Event Source Mono Behaviour' 필드를 비우거나 올바른 CombatEventSource를 할당하세요!");
+            }
+        }
+        
+        // 없으면 같은 GameObject에서 찾기
+        combatEventSource = GetComponent<ICombatEventSource>();
+        if (combatEventSource != null)
+        {
+            Debug.Log("[TutorialController] 같은 GameObject에서 CombatEventSource를 찾았습니다.");
+            return;
+        }
+        
+        // 없으면 씬에서 CombatEventSource 찾기
+        CombatEventSource foundSource = FindObjectOfType<CombatEventSource>();
+        if (foundSource != null)
+        {
+            combatEventSource = foundSource;
+            Debug.Log($"[TutorialController] 씬에서 CombatEventSource를 찾았습니다: {foundSource.gameObject.name}");
+            return;
+        }
+        
+        // 그래도 없으면 MockCombatEventSource 찾기
+        MockCombatEventSource mockSource = FindObjectOfType<MockCombatEventSource>();
+        if (mockSource != null)
+        {
+            combatEventSource = mockSource;
+            Debug.Log($"[TutorialController] 씬에서 MockCombatEventSource를 찾았습니다: {mockSource.gameObject.name}");
+            return;
+        }
+        
+        Debug.LogError("[TutorialController] CombatEventSource를 찾을 수 없습니다! 씬에 CombatEventSource 또는 MockCombatEventSource가 있는지 확인하세요.");
+    }
+
+    /// <summary>
+    /// 전투 이벤트 구독
+    /// </summary>
+    private void SubscribeToCombatEvents()
+    {
+        if (combatEventSource == null)
+        {
+            Debug.LogError("[TutorialController] combatEventSource가 null이어서 이벤트를 구독할 수 없습니다!");
+            Debug.LogError("[TutorialController] TryConnectCombatEventSource()가 제대로 실행되었는지 확인하세요.");
+            return;
+        }
+
+        Debug.Log($"[TutorialController] 전투 이벤트 구독 시작... (combatEventSource 타입: {combatEventSource.GetType().Name})");
+        
+        // 기존 구독 해제 (중복 방지)
+        try
+        {
+            combatEventSource.OnPlayerDamaged -= HandlePlayerDamaged;
+            combatEventSource.OnEnemyDefeated -= HandleEnemyDefeated;
+            combatEventSource.OnPlayerDefeated -= HandlePlayerDefeated;
+            Debug.Log("[TutorialController] 기존 구독 해제 완료");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[TutorialController] 기존 구독 해제 중 예외 발생 (무시 가능): {e.Message}");
+        }
+        
+        // 새로 구독
+        try
+        {
+            combatEventSource.OnPlayerDamaged += HandlePlayerDamaged;
+            Debug.Log("[TutorialController] OnPlayerDamaged 구독 완료");
+            
+            combatEventSource.OnEnemyDefeated += HandleEnemyDefeated;
+            Debug.Log("[TutorialController] OnEnemyDefeated 구독 완료");
+            
+            combatEventSource.OnPlayerDefeated += HandlePlayerDefeated;
+            Debug.Log("[TutorialController] OnPlayerDefeated 구독 완료");
+            
+            Debug.Log("[TutorialController] ===== 전투 이벤트 구독 완료 =====");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[TutorialController] 이벤트 구독 중 예외 발생: {e.Message}");
+            Debug.LogError($"[TutorialController] 스택 트레이스: {e.StackTrace}");
+        }
     }
 
     private void OnDestroy()
@@ -79,6 +191,8 @@ public class TutorialController : MonoBehaviour
         {
             combatEventSource.OnPlayerDamaged -= HandlePlayerDamaged;
             combatEventSource.OnEnemyDefeated -= HandleEnemyDefeated;
+            combatEventSource.OnPlayerDefeated -= HandlePlayerDefeated;
+            Debug.Log("[TutorialController] 전투 이벤트 구독 해제 완료");
         }
     }
 
@@ -96,7 +210,114 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     private void HandleEnemyDefeated()
     {
+        Debug.Log("[TutorialController] ===== HandleEnemyDefeated 호출됨 =====");
+        Debug.Log($"[TutorialController] runReport null 여부: {runReport == null}");
+        
+        // runReport가 없으면 현재 정책으로 자동 생성
+        if (runReport == null)
+        {
+            Debug.LogWarning("[TutorialController] runReport가 없어서 현재 정책으로 자동 생성합니다.");
+            
+            TutorialPolicy policy = null;
+            string policyJson = null;
+            
+            // PolicyApplier에서 현재 정책 가져오기
+            if (policyApplier != null)
+            {
+                policy = policyApplier.GetCurrentPolicy();
+                policyJson = policyApplier.GetCurrentPolicyJson();
+            }
+            
+            // 정책이 없으면 기본 정책 사용
+            if (policy == null)
+            {
+                policy = TutorialPolicy.GetDefault();
+                policyJson = policy.ToJson();
+                Debug.LogWarning("[TutorialController] PolicyApplier가 없거나 정책이 없어서 기본 정책을 사용합니다.");
+            }
+            
+            // RunReport 생성
+            int seed = UnityEngine.Random.Range(0, int.MaxValue);
+            runReport = new RunReport(policy, policyJson, seed);
+            
+            // RUN_START 이벤트 추가 (늦은 시작)
+            runReport.AddEvent(TutorialEventType.RUN_START, new
+            {
+                appVersion = Application.version,
+                policyVariant = policy.variant,
+                tutorialVersion = policy.tutorialVersion,
+                reason = "Auto-created on enemy defeat"
+            });
+            
+            Debug.Log($"[TutorialController] RunReport 자동 생성 완료 (variant: {policy.variant})");
+        }
+        
         OnSuccess();
+    }
+
+    /// <summary>
+    /// 플레이어 사망 이벤트 처리
+    /// </summary>
+    private void HandlePlayerDefeated()
+    {
+        Debug.Log("[TutorialController] ===== HandlePlayerDefeated 호출됨 =====");
+        Debug.Log($"[TutorialController] runReport null 여부: {runReport == null}");
+        Debug.Log($"[TutorialController] combatEventSource null 여부: {combatEventSource == null}");
+
+        // runReport가 없으면 현재 정책으로 자동 생성
+        if (runReport == null)
+        {
+            Debug.LogWarning("[TutorialController] runReport가 없어서 현재 정책으로 자동 생성합니다.");
+            
+            TutorialPolicy policy = null;
+            string policyJson = null;
+            
+            // PolicyApplier에서 현재 정책 가져오기
+            if (policyApplier != null)
+            {
+                policy = policyApplier.GetCurrentPolicy();
+                policyJson = policyApplier.GetCurrentPolicyJson();
+            }
+            
+            // 정책이 없으면 기본 정책 사용
+            if (policy == null)
+            {
+                policy = TutorialPolicy.GetDefault();
+                policyJson = policy.ToJson();
+                Debug.LogWarning("[TutorialController] PolicyApplier가 없거나 정책이 없어서 기본 정책을 사용합니다.");
+            }
+            
+            // RunReport 생성
+            int seed = UnityEngine.Random.Range(0, int.MaxValue);
+            runReport = new RunReport(policy, policyJson, seed);
+            
+            // RUN_START 이벤트 추가 (늦은 시작)
+            runReport.AddEvent(TutorialEventType.RUN_START, new
+            {
+                appVersion = Application.version,
+                policyVariant = policy.variant,
+                tutorialVersion = policy.tutorialVersion,
+                reason = "Auto-created on player defeat"
+            });
+            
+            Debug.Log($"[TutorialController] RunReport 자동 생성 완료 (variant: {policy.variant})");
+        }
+
+        Debug.Log("[TutorialController] Player defeated - RunReport 저장 시작");
+
+        // 실패 이벤트 로깅
+        damageTaken++; // 플레이어 사망도 데미지로 간주
+        failCount++;
+        var failData = new { failCount = failCount, state = currentState.ToString(), reason = "Player defeated" };
+        runReport.AddEvent(TutorialEventType.FAIL, failData);
+        runReport.summary.failCount = failCount;
+
+        // 튜토리얼 종료 상태로 변경
+        ChangeState(TutorialState.Clear);
+        
+        // 로그 저장
+        FinalizeRunReport("FAIL", "Player defeated");
+        Debug.Log("[TutorialController] ===== HandlePlayerDefeated 완료 =====");
     }
 
     /// <summary>
@@ -217,11 +438,15 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     public void OnSuccess()
     {
+        Debug.Log("[TutorialController] ===== OnSuccess 호출됨 =====");
+        Debug.Log($"[TutorialController] runReport null 여부: {runReport == null}");
+        
         failCount = 0; // 성공 시 실패 카운트 리셋
         ChangeState(TutorialState.Clear);
         
         // D. 튜토리얼 종료 시점: summary 최종화, RUN_END, SaveToFile
         FinalizeRunReport("CLEAR", "Enemy defeated");
+        Debug.Log("[TutorialController] ===== OnSuccess 완료 =====");
     }
 
     /// <summary>

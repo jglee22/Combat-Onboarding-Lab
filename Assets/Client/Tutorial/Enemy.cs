@@ -17,7 +17,8 @@ public class Enemy : MonoBehaviour
     [SerializeField] private bool useProximityDamage = false; // 플레이어가 가까우면 데미지
     [SerializeField] private float proximityDistance = 2.0f; // 근접 거리
 
-    [Header("참조")]
+    [Header("참조 (자동으로 찾거나 수동으로 연결)")]
+    [Tooltip("Player 컴포넌트 참조. 비어있으면 씬에서 자동으로 찾습니다.")]
     [SerializeField] private Player targetPlayer;
 
     private float lastDamageTime = 0f;

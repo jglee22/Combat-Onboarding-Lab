@@ -16,6 +16,7 @@ public class MockCombatEventSource : MonoBehaviour, ICombatEventSource
     public event System.Action OnPlayerHit;
     public event System.Action OnPlayerDamaged;
     public event System.Action OnEnemyDefeated;
+    public event System.Action OnPlayerDefeated;
 
     private void Start()
     {
@@ -66,6 +67,12 @@ public class MockCombatEventSource : MonoBehaviour, ICombatEventSource
     public void TriggerEnemyDefeated()
     {
         OnEnemyDefeated?.Invoke();
+    }
+
+    [ContextMenu("Trigger: Player Defeated")]
+    public void TriggerPlayerDefeated()
+    {
+        OnPlayerDefeated?.Invoke();
     }
 }
 
