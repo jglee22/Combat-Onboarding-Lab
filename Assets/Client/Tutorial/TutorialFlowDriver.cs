@@ -60,7 +60,7 @@ public class TutorialFlowDriver : MonoBehaviour
     /// </summary>
     private void OnStateChanged(TutorialState newState)
     {
-        Debug.Log($"[TutorialFlowDriver] State changed to: {newState}");
+        Debug.Log($"[TutorialFlowDriver] 상태 변경: {newState}");
     }
 
     /// <summary>
@@ -77,35 +77,35 @@ public class TutorialFlowDriver : MonoBehaviour
     {
         if (tutorialController == null) yield break;
 
-        Debug.Log("=== Tutorial Flow Simulation Start ===");
+        Debug.Log("=== 튜토리얼 흐름 시뮬레이션 시작 ===");
 
         // 1. Init → WaitingForAction
         yield return new WaitForSeconds(simulationDelay);
         tutorialController.StartWaitingForAction();
-        Debug.Log("→ Transitioned to WaitingForAction");
+        Debug.Log("→ WaitingForAction 상태로 전환");
 
         // 2. (시간 초과) → Hint
         float hintDelay = tutorialController.GetHintDelaySeconds();
         yield return new WaitForSeconds(hintDelay);
         tutorialController.ShowHint();
-        Debug.Log($"→ (시간 초과 {hintDelay}초) Transitioned to Hint");
+        Debug.Log($"→ (시간 초과 {hintDelay}초) Hint 상태로 전환");
 
         // 3. (피격 발생) → Failure → Retry
         yield return new WaitForSeconds(simulationDelay);
         tutorialController.OnFailure();
-        Debug.Log("→ (피격 발생) Transitioned to Retry");
+        Debug.Log("→ (피격 발생) Retry 상태로 전환");
 
         // 4. (반복 실패) → Assist (maxFailCount 초과 시)
         yield return new WaitForSeconds(simulationDelay);
         tutorialController.OnFailure();
-        Debug.Log("→ (반복 실패) Checking if should transition to Assist...");
+        Debug.Log("→ (반복 실패) Assist 상태로 전환해야 하는지 확인 중...");
 
         // 5. (적 처치) → Clear
         yield return new WaitForSeconds(simulationDelay);
         tutorialController.OnSuccess();
-        Debug.Log("→ (적 처치) Transitioned to Clear");
+        Debug.Log("→ (적 처치) Clear 상태로 전환");
 
-        Debug.Log("=== Tutorial Flow Simulation End ===");
+        Debug.Log("=== 튜토리얼 흐름 시뮬레이션 종료 ===");
     }
 
     // ============================================

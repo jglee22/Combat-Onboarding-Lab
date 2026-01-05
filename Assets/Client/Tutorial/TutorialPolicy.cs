@@ -48,7 +48,7 @@ public class TutorialPolicy
         }
         catch (Exception e)
         {
-            Debug.LogError($"Failed to parse TutorialPolicy JSON: {e.Message}");
+            Debug.LogError($"TutorialPolicy JSON 파싱 실패: {e.Message}");
             return GetDefault();
         }
     }

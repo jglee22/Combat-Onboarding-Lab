@@ -109,10 +109,10 @@ public class TutorialUIController : MonoBehaviour
         string variant = policyApplier?.GetVariant() ?? "Unknown";
         float hintDelay = policyApplier?.GetHintDelaySeconds() ?? 0f;
 
-        infoText.text = $"State: {state}\n" +
-                       $"FailCount: {failCount}\n" +
-                       $"Policy Variant: {variant}\n" +
-                       $"HintDelay: {hintDelay:F1}s";
+        infoText.text = $"상태: {state}\n" +
+                       $"실패 횟수: {failCount}\n" +
+                       $"정책 변형: {variant}\n" +
+                       $"힌트 지연: {hintDelay:F1}초";
     }
 
     /// <summary>

@@ -255,7 +255,7 @@ public class TutorialController : MonoBehaviour
         Debug.Log("[TutorialController] ===== HandleEnemyDefeated 호출됨 =====");
         Debug.Log($"[TutorialController] runReport null 여부: {runReport == null}");
         
-        EnsureRunReportExists("Auto-created on enemy defeat");
+        EnsureRunReportExists("에너미 처치 시 자동 생성");
         OnSuccess();
     }
 
@@ -268,14 +268,14 @@ public class TutorialController : MonoBehaviour
         Debug.Log($"[TutorialController] runReport null 여부: {runReport == null}");
         Debug.Log($"[TutorialController] combatEventSource null 여부: {combatEventSource == null}");
 
-        EnsureRunReportExists("Auto-created on player defeat");
+        EnsureRunReportExists("플레이어 사망 시 자동 생성");
 
-        Debug.Log("[TutorialController] Player defeated - RunReport 저장 시작");
+        Debug.Log("[TutorialController] 플레이어 사망 - RunReport 저장 시작");
 
         // 실패 이벤트 로깅
         damageTaken++; // 플레이어 사망도 데미지로 간주
         failCount++;
-        var failData = new { failCount = failCount, state = currentState.ToString(), reason = "Player defeated" };
+        var failData = new { failCount = failCount, state = currentState.ToString(), reason = "플레이어 사망" };
         runReport.AddEvent(TutorialEventType.FAIL, failData);
         runReport.summary.failCount = failCount;
 
@@ -283,7 +283,7 @@ public class TutorialController : MonoBehaviour
         ChangeState(TutorialState.Clear);
         
         // 로그 저장
-        FinalizeRunReport("FAIL", "Player defeated");
+        FinalizeRunReport("FAIL", "플레이어 사망");
         Debug.Log("[TutorialController] ===== HandlePlayerDefeated 완료 =====");
     }
 
@@ -329,7 +329,7 @@ public class TutorialController : MonoBehaviour
 
         currentState = newState;
         OnStateChanged?.Invoke(currentState);
-        Debug.Log($"TutorialState changed to: {currentState}");
+        Debug.Log($"튜토리얼 상태 변경: {currentState}");
     }
 
     /// <summary>
@@ -364,7 +364,7 @@ public class TutorialController : MonoBehaviour
     public void OnFailure()
     {
         failCount++;
-        Debug.Log($"Failure occurred. FailCount: {failCount}");
+        Debug.Log($"실패 발생. 실패 횟수: {failCount}");
 
         // C. 실패: FAIL 이벤트 + summary.failCount++
         if (runReport != null)
@@ -412,7 +412,7 @@ public class TutorialController : MonoBehaviour
         ChangeState(TutorialState.Clear);
         
         // D. 튜토리얼 종료 시점: summary 최종화, RUN_END, SaveToFile
-        FinalizeRunReport("CLEAR", "Enemy defeated");
+        FinalizeRunReport("CLEAR", "에너미 처치");
         Debug.Log("[TutorialController] ===== OnSuccess 완료 =====");
     }
 
@@ -499,17 +499,17 @@ public class TutorialController : MonoBehaviour
             appVersion = Application.version,
             policyVariant = policy.variant,
             tutorialVersion = policy.tutorialVersion,
-            reason = "Policy button clicked"
+            reason = "정책 버튼 클릭"
         });
 
         // 버튼 클릭 시점에 즉시 파일 저장
         string reportsDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Reports");
         runReport.summary.damageTaken = 0;
-        runReport.FinalizeSummary("START", "Policy button clicked");
+        runReport.FinalizeSummary("START", "정책 버튼 클릭");
         runReport.AddEvent(TutorialEventType.RUN_END, new
         {
             result = "START",
-            endReason = "Policy button clicked",
+            endReason = "정책 버튼 클릭",
             durationSeconds = 0,
             failCount = 0,
             damageTaken = 0

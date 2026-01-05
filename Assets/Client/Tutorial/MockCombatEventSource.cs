@@ -31,20 +31,20 @@ public class MockCombatEventSource : MonoBehaviour, ICombatEventSource
         // 플레이어가 공격
         yield return new WaitForSeconds(1.0f);
         OnPlayerHit?.Invoke();
-        Debug.Log("[MockCombat] Player Hit!");
+        Debug.Log("[MockCombat] 플레이어 공격!");
 
         // 플레이어가 피해를 입음 (반복)
         for (int i = 0; i < 2; i++)
         {
             yield return new WaitForSeconds(damageInterval);
             OnPlayerDamaged?.Invoke();
-            Debug.Log($"[MockCombat] Player Damaged! (Count: {i + 1})");
+            Debug.Log($"[MockCombat] 플레이어 피해! (횟수: {i + 1})");
         }
 
         // 적 처치
         yield return new WaitForSeconds(enemyDefeatDelay);
         OnEnemyDefeated?.Invoke();
-        Debug.Log("[MockCombat] Enemy Defeated!");
+        Debug.Log("[MockCombat] 에너미 처치!");
     }
 
     // ============================================

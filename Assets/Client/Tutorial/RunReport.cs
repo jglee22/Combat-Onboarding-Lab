@@ -134,11 +134,11 @@ public class RunReport
 
             // 파일 저장
             System.IO.File.WriteAllText(filePath, json, System.Text.Encoding.UTF8);
-            Debug.Log($"[RunReport] Saved to: {filePath}");
+            Debug.Log($"[RunReport] 저장 완료: {filePath}");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RunReport] Failed to save report: {e.Message}");
+            Debug.LogError($"[RunReport] 리포트 저장 실패: {e.Message}");
         }
     }
 

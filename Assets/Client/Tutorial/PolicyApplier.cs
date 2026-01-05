@@ -58,13 +58,13 @@ public class PolicyApplier : MonoBehaviour
         {
             currentPolicy = TutorialPolicy.GetDefault();
             lastLoadedPolicyJson = currentPolicy.ToJson(); // 기본값도 JSON으로 저장
-            Debug.Log("Using default tutorial policy");
+            Debug.Log("기본 튜토리얼 정책을 사용합니다");
         }
         else
         {
             lastLoadedPolicyJson = testPolicyJson; // 실제 로드된 JSON 저장
             currentPolicy = TutorialPolicy.FromJson(testPolicyJson);
-            Debug.Log($"Loaded tutorial policy: Version {currentPolicy.tutorialVersion}, Variant {currentPolicy.variant}");
+            Debug.Log($"튜토리얼 정책 로드 완료: 버전 {currentPolicy.tutorialVersion}, 변형 {currentPolicy.variant}");
         }
 
         // 초기 정책 로딩 시에도 변화가 보이는 처리 적용
@@ -83,7 +83,7 @@ public class PolicyApplier : MonoBehaviour
         currentPolicy = TutorialPolicy.FromJson(jsonPolicy);
         if (currentPolicy != null)
         {
-            Debug.Log($"Policy applied: {currentPolicy.ToJson()}");
+            Debug.Log($"정책 적용 완료: {currentPolicy.ToJson()}");
             OnPolicyUpdated();
         }
     }
@@ -118,7 +118,7 @@ public class PolicyApplier : MonoBehaviour
     {
         if (currentPolicy == null) return;
 
-        Debug.Log($"[PolicyApplier] Policy updated. Applying visible changes...");
+        Debug.Log($"[PolicyApplier] 정책이 업데이트되었습니다. 화면에 보이는 변경사항을 적용 중...");
 
         // 1. 힌트 타이머 재설정
         ResetHintTimer();
@@ -145,7 +145,7 @@ public class PolicyApplier : MonoBehaviour
         if (currentState == TutorialState.WaitingForAction)
         {
             float newHintDelay = GetHintDelaySeconds();
-            Debug.Log($"[PolicyApplier] Hint timer reset to {newHintDelay} seconds (was in WaitingForAction state)");
+            Debug.Log($"[PolicyApplier] 힌트 타이머를 {newHintDelay}초로 재설정했습니다 (WaitingForAction 상태였음)");
 
             // 코루틴으로 힌트 타이밍 재시작
             StopAllCoroutines();
@@ -164,7 +164,7 @@ public class PolicyApplier : MonoBehaviour
             tutorialController.GetCurrentState() == TutorialState.WaitingForAction)
         {
             tutorialController.ShowHint();
-            Debug.Log($"[PolicyApplier] Hint shown after {delay} seconds delay");
+            Debug.Log($"[PolicyApplier] {delay}초 지연 후 힌트를 표시했습니다");
         }
     }
 
@@ -177,7 +177,7 @@ public class PolicyApplier : MonoBehaviour
     private void UpdateUIToggles()
     {
         bool shouldShowArrow = ShouldShowArrow();
-        Debug.Log($"[PolicyApplier] UI toggles updated - showArrow: {shouldShowArrow}");
+        Debug.Log($"[PolicyApplier] UI 토글 업데이트 완료 - 화살표 표시: {shouldShowArrow}");
 
         // TutorialUIController를 통해 실제 UI 업데이트
         if (uiController != null)
