@@ -78,7 +78,39 @@ public class RunReport
             tutorialVersion = string.IsNullOrEmpty(policySnapshot.tutorialVersion) ? "1.0.0" : policySnapshot.tutorialVersion
         };
         this.policy = policySnapshot;
-        this.policyData = !string.IsNullOrEmpty(policyJson) ? policyJson : policySnapshot.ToJson(); // 실제 로드값 저장 (JSON 문자열)
+        
+        // policyData 설정 (policyJson이 있으면 사용, 없으면 policySnapshot을 JSON으로 변환)
+        if (!string.IsNullOrEmpty(policyJson))
+        {
+            this.policyData = policyJson;
+            Debug.Log($"[RunReport] 생성자: policyJson 사용 (길이: {policyJson.Length})");
+        }
+        else
+        {
+            string snapshotJson = policySnapshot.ToJson();
+            this.policyData = snapshotJson;
+            Debug.Log($"[RunReport] 생성자: policySnapshot.ToJson() 사용 (길이: {snapshotJson?.Length ?? 0})");
+        }
+        
+        // policyData가 여전히 비어있으면 기본 정책 JSON 사용
+        if (string.IsNullOrEmpty(this.policyData))
+        {
+            Debug.LogError("[RunReport] 생성자: policyData가 비어있어 기본 정책 JSON을 사용합니다.");
+            TutorialPolicy defaultPolicy = TutorialPolicy.GetDefault();
+            this.policyData = defaultPolicy.ToJson();
+            Debug.Log($"[RunReport] 생성자: 기본 정책 JSON 생성 (길이: {this.policyData?.Length ?? 0})");
+        }
+        
+        // 최종 검증
+        if (string.IsNullOrEmpty(this.policyData))
+        {
+            Debug.LogError("[RunReport] 생성자: ⚠️ policyData가 여전히 비어있습니다! 최소한 빈 객체라도 설정합니다.");
+            this.policyData = "{}";
+        }
+        
+        Debug.Log($"[RunReport] 생성자 완료 - policyData 최종 길이: {this.policyData?.Length ?? 0}");
+        Debug.Log($"[RunReport] 생성자 - policyData 내용 (처음 100자): {this.policyData?.Substring(0, Math.Min(100, this.policyData.Length)) ?? "null"}");
+        
         this.summary = new RunSummary();
         this.events = new List<TutorialEvent>();
         this.runStartTime = Time.time;
@@ -100,10 +132,13 @@ public class RunReport
     /// <summary>
     /// 요약 정보 최종화
     /// </summary>
-    public void FinalizeSummary(string result, string endReason)
+    /// <param name="result">결과 (CLEAR, FAIL 등)</param>
+    /// <param name="endReason">종료 이유</param>
+    /// <param name="durationSeconds">소요 시간 (초). 지정하지 않으면 runStartTime 기준으로 계산</param>
+    public void FinalizeSummary(string result, string endReason, float? durationSeconds = null)
     {
         summary.result = result;
-        summary.durationSeconds = Time.time - runStartTime;
+        summary.durationSeconds = durationSeconds ?? (Time.time - runStartTime);
         summary.endReason = endReason;
     }
 
@@ -131,6 +166,9 @@ public class RunReport
 
             // 커스텀 JSON 직렬화 (data 필드를 객체로 변환)
             string json = ToJsonWithDataAsObject();
+
+            // timestamp와 durationSeconds 필드의 소수점 자리수 제한 (정규식으로 처리)
+            json = FormatFloatValues(json);
 
             // 파일 저장
             System.IO.File.WriteAllText(filePath, json, System.Text.Encoding.UTF8);
@@ -485,9 +523,17 @@ public class RunReport
         {
             return value.ToString();
         }
-        else if (value is float || value is double || value is decimal)
+        else if (value is float f)
         {
-            return value.ToString().Replace(",", ".");
+            return f.ToString("F3", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        else if (value is double d)
+        {
+            return d.ToString("F3", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        else if (value is decimal dec)
+        {
+            return dec.ToString("F3", System.Globalization.CultureInfo.InvariantCulture);
         }
         else
         {
@@ -544,6 +590,26 @@ public class RunReport
         }
         
         return -1;
+    }
+
+    /// <summary>
+    /// JSON 문자열에서 float 값의 소수점 자리수를 제한 (timestamp, durationSeconds 등)
+    /// </summary>
+    private string FormatFloatValues(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return json;
+
+        // 정규식으로 float 값을 찾아서 소수점 3자리로 포맷팅
+        // 패턴: 숫자.숫자 (예: 123.456789 -> 123.457)
+        System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex(@"(\d+\.\d{4,})");
+        return regex.Replace(json, match =>
+        {
+            if (float.TryParse(match.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float value))
+            {
+                return value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture);
+            }
+            return match.Value;
+        });
     }
 }
 

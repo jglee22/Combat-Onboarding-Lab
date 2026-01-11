@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections;
 
 /// <summary>
 /// 튜토리얼 중앙 컨트롤러
@@ -59,7 +60,7 @@ public class TutorialController : MonoBehaviour
             policyApplier = GetComponent<PolicyApplier>();
             if (policyApplier == null)
             {
-                Debug.LogError("[TutorialController] PolicyApplier가 필요합니다!");
+                policyApplier = FindObjectOfType<PolicyApplier>();
             }
         }
 
@@ -70,8 +71,153 @@ public class TutorialController : MonoBehaviour
         // 튜토리얼 시작 시간 기록
         tutorialStartTime = Time.time;
 
+        // RunReport 생성 (PolicyApplier 초기화를 기다린 후 생성)
+        StartCoroutine(InitializeRunReportCoroutine());
+
         // 초기 상태로 전환
         ChangeState(TutorialState.Init);
+    }
+
+    /// <summary>
+    /// RunReport 초기화 코루틴 (PolicyApplier 초기화 대기)
+    /// </summary>
+    private IEnumerator InitializeRunReportCoroutine()
+    {
+        // PolicyApplier가 초기화될 때까지 최대 10프레임 대기
+        int maxWaitFrames = 10;
+        int waitFrame = 0;
+        
+        while (waitFrame < maxWaitFrames)
+        {
+            if (policyApplier == null)
+            {
+                policyApplier = FindObjectOfType<PolicyApplier>();
+            }
+            
+            if (policyApplier != null)
+            {
+                // PolicyApplier가 정책을 로드했는지 확인
+                TutorialPolicy policy = policyApplier.GetCurrentPolicy();
+                if (policy != null)
+                {
+                    string policyJson = policyApplier.GetCurrentPolicyJson();
+                    // policyJson이 비어있어도 policy가 있으면 생성 가능 (policy.ToJson()으로 생성)
+                    // 정책이 준비되었으므로 RunReport 생성
+                    CreateRunReport(policy, policyJson);
+                    yield break;
+                }
+            }
+            
+            waitFrame++;
+            yield return null; // 다음 프레임까지 대기
+        }
+        
+        // 대기 시간 초과 시 기본 정책으로 생성
+        Debug.LogWarning("[TutorialController] PolicyApplier 초기화 대기 시간 초과. 기본 정책을 사용합니다.");
+        TutorialPolicy defaultPolicy = TutorialPolicy.GetDefault();
+        CreateRunReport(defaultPolicy, defaultPolicy.ToJson());
+    }
+
+    /// <summary>
+    /// RunReport 생성
+    /// </summary>
+    private void CreateRunReport(TutorialPolicy policy, string policyJson)
+    {
+        if (runReport != null) return;
+
+        // 정책이 없거나 필드가 모두 비어있으면 기본 정책 사용
+        if (policy == null || 
+            (string.IsNullOrEmpty(policy.variant) && 
+             string.IsNullOrEmpty(policy.tutorialVersion) && 
+             policy.hintDelaySeconds == 0 && 
+             policy.maxFailCount == 0))
+        {
+            Debug.LogWarning("[TutorialController] CreateRunReport: policy가 null이거나 비어있어 기본 정책을 사용합니다.");
+            policy = TutorialPolicy.GetDefault();
+            policyJson = null; // 기본 정책으로 재생성
+        }
+        
+        // variant와 tutorialVersion이 비어있으면 기본값 보장
+        if (string.IsNullOrEmpty(policy.variant))
+        {
+            Debug.LogWarning("[TutorialController] CreateRunReport: policy.variant가 비어있어 'A'로 설정합니다.");
+            policy.variant = "A";
+        }
+        if (string.IsNullOrEmpty(policy.tutorialVersion))
+        {
+            Debug.LogWarning("[TutorialController] CreateRunReport: policy.tutorialVersion이 비어있어 '1.0.0'으로 설정합니다.");
+            policy.tutorialVersion = "1.0.0";
+        }
+        
+        // hintDelaySeconds가 0이면 기본값 설정
+        if (policy.hintDelaySeconds == 0)
+        {
+            Debug.LogWarning("[TutorialController] CreateRunReport: policy.hintDelaySeconds가 0이어서 3.0으로 설정합니다.");
+            policy.hintDelaySeconds = 3.0f;
+        }
+        
+        // maxFailCount가 0이면 기본값 설정
+        if (policy.maxFailCount == 0)
+        {
+            Debug.LogWarning("[TutorialController] CreateRunReport: policy.maxFailCount가 0이어서 3으로 설정합니다.");
+            policy.maxFailCount = 3;
+        }
+        
+        // policyJson이 비어있거나 정책이 수정되었으면 policy를 JSON으로 재생성
+        if (string.IsNullOrEmpty(policyJson))
+        {
+            Debug.LogWarning("[TutorialController] CreateRunReport: policyJson이 비어있어 policy.ToJson()을 사용합니다.");
+            policyJson = policy.ToJson();
+        }
+        else
+        {
+            // policyJson이 있지만 정책이 수정되었으면 재생성
+            // (variant나 tutorialVersion이 수정되었을 수 있음)
+            policyJson = policy.ToJson();
+            Debug.Log("[TutorialController] CreateRunReport: 정책이 수정되어 policyJson을 재생성했습니다.");
+        }
+        
+        // policyJson이 여전히 비어있으면 에러
+        if (string.IsNullOrEmpty(policyJson))
+        {
+            Debug.LogError("[TutorialController] CreateRunReport: policyJson이 여전히 비어있습니다! 기본 정책 JSON을 강제 생성합니다.");
+            policy = TutorialPolicy.GetDefault();
+            policyJson = policy.ToJson();
+        }
+        
+        Debug.Log($"[TutorialController] CreateRunReport - 정책 정보:");
+        Debug.Log($"[TutorialController] - variant: '{policy.variant}'");
+        Debug.Log($"[TutorialController] - tutorialVersion: '{policy.tutorialVersion}'");
+        Debug.Log($"[TutorialController] - hintDelaySeconds: {policy.hintDelaySeconds}");
+        Debug.Log($"[TutorialController] - maxFailCount: {policy.maxFailCount}");
+        Debug.Log($"[TutorialController] - policyJson 길이: {policyJson?.Length ?? 0}");
+        Debug.Log($"[TutorialController] - policyJson 내용 (처음 200자): {policyJson?.Substring(0, Math.Min(200, policyJson.Length)) ?? "null"}");
+        
+        // RunReport 생성
+        int seed = UnityEngine.Random.Range(0, int.MaxValue);
+        runReport = new RunReport(policy, policyJson, seed);
+        
+        // RUN_START 이벤트 추가
+        runReport.AddEvent(TutorialEventType.RUN_START, new
+        {
+            appVersion = Application.version,
+            policyVariant = string.IsNullOrEmpty(policy.variant) ? "A" : policy.variant,
+            tutorialVersion = string.IsNullOrEmpty(policy.tutorialVersion) ? "1.0.0" : policy.tutorialVersion,
+            reason = "튜토리얼 시작"
+        });
+        
+        Debug.Log($"[TutorialController] RunReport 초기화 완료");
+        Debug.Log($"[TutorialController] - policyData 길이: {runReport.policyData?.Length ?? 0}");
+        
+        // policyData가 비어있으면 에러
+        if (string.IsNullOrEmpty(runReport.policyData))
+        {
+            Debug.LogError("[TutorialController] ⚠️ RunReport 생성 후에도 policyData가 비어있습니다!");
+        }
+        else
+        {
+            Debug.Log($"[TutorialController] - policyData 내용 (처음 200자): {runReport.policyData.Substring(0, Math.Min(200, runReport.policyData.Length))}");
+        }
     }
 
     /// <summary>
@@ -216,6 +362,12 @@ public class TutorialController : MonoBehaviour
         TutorialPolicy policy = null;
         string policyJson = null;
         
+        // PolicyApplier가 없으면 찾기
+        if (policyApplier == null)
+        {
+            policyApplier = FindObjectOfType<PolicyApplier>();
+        }
+        
         // PolicyApplier에서 현재 정책 가져오기
         if (policyApplier != null)
         {
@@ -223,28 +375,42 @@ public class TutorialController : MonoBehaviour
             policyJson = policyApplier.GetCurrentPolicyJson();
         }
         
-        // 정책이 없으면 기본 정책 사용
+        // policy가 null이거나 policyJson이 비어있으면 기본값 사용
         if (policy == null)
         {
             policy = TutorialPolicy.GetDefault();
+        }
+        
+        // policyJson이 비어있으면 policy를 JSON으로 변환
+        if (string.IsNullOrEmpty(policyJson))
+        {
             policyJson = policy.ToJson();
-            Debug.LogWarning("[TutorialController] PolicyApplier가 없거나 정책이 없어서 기본 정책을 사용합니다.");
+        }
+        
+        // variant와 tutorialVersion이 비어있으면 기본값 보장
+        if (string.IsNullOrEmpty(policy.variant))
+        {
+            policy.variant = "A";
+        }
+        if (string.IsNullOrEmpty(policy.tutorialVersion))
+        {
+            policy.tutorialVersion = "1.0.0";
         }
         
         // RunReport 생성
         int seed = UnityEngine.Random.Range(0, int.MaxValue);
         runReport = new RunReport(policy, policyJson, seed);
         
-        // RUN_START 이벤트 추가 (늦은 시작)
+        // RUN_START 이벤트 추가 (늦은 시작, variant와 version 보장)
         runReport.AddEvent(TutorialEventType.RUN_START, new
         {
             appVersion = Application.version,
-            policyVariant = policy.variant,
-            tutorialVersion = policy.tutorialVersion,
+            policyVariant = string.IsNullOrEmpty(policy.variant) ? "A" : policy.variant,
+            tutorialVersion = string.IsNullOrEmpty(policy.tutorialVersion) ? "1.0.0" : policy.tutorialVersion,
             reason = autoCreateReason
         });
         
-        Debug.Log($"[TutorialController] RunReport 자동 생성 완료 (variant: {policy.variant})");
+        Debug.Log($"[TutorialController] RunReport 자동 생성 완료 (variant: {policy.variant}, policyJson 길이: {policyJson?.Length ?? 0})");
     }
 
     /// <summary>
@@ -310,6 +476,12 @@ public class TutorialController : MonoBehaviour
     {
         if (currentState == newState) return;
 
+        // runReport가 없으면 자동 생성 (늦은 시작)
+        if (runReport == null)
+        {
+            EnsureRunReportExists("상태 변경 시 자동 생성");
+        }
+
         // B. 단계 시작/클리어: STEP_START, STEP_CLEAR 이벤트 추가
         if (runReport != null)
         {
@@ -319,17 +491,28 @@ public class TutorialController : MonoBehaviour
                 runReport.AddEvent(TutorialEventType.STEP_CLEAR, new { previousState = currentState.ToString() });
             }
 
-            // 새 상태로 STEP_START
-            if (newState != TutorialState.Init && newState != TutorialState.Clear)
+            // 새 상태로 STEP_START (Init과 Clear 제외하지 않고 모두 로깅)
+            // 단, Clear는 최종 상태이므로 STEP_START 대신 RUN_END에서 처리
+            if (newState != TutorialState.Clear)
             {
                 runReport.AddEvent(TutorialEventType.STEP_START, new { stepName = newState.ToString() });
-                runReport.summary.stepCount++;
+                // Init은 시작 상태이므로 stepCount에 포함하지 않음
+                if (newState != TutorialState.Init)
+                {
+                    runReport.summary.stepCount++;
+                }
             }
         }
 
         currentState = newState;
         OnStateChanged?.Invoke(currentState);
         Debug.Log($"튜토리얼 상태 변경: {currentState}");
+
+        // WaitingForAction 상태로 전환 시 힌트 타이머 시작
+        if (newState == TutorialState.WaitingForAction && policyApplier != null)
+        {
+            StartHintTimer();
+        }
     }
 
     /// <summary>
@@ -341,10 +524,56 @@ public class TutorialController : MonoBehaviour
     }
 
     /// <summary>
+    /// 힌트 타이머 시작 (WaitingForAction 상태에서 자동 호출)
+    /// </summary>
+    private void StartHintTimer()
+    {
+        if (policyApplier == null) return;
+
+        float hintDelay = policyApplier.GetHintDelaySeconds();
+        StartCoroutine(HintTimerCoroutine(hintDelay));
+    }
+
+    /// <summary>
+    /// 힌트 타이머 재시작 (정책 변경 시 호출)
+    /// </summary>
+    public void RestartHintTimer()
+    {
+        if (currentState != TutorialState.WaitingForAction) return;
+        if (policyApplier == null) return;
+
+        // 기존 코루틴 중지
+        StopAllCoroutines();
+
+        // 새 힌트 타이머 시작
+        StartHintTimer();
+    }
+
+    /// <summary>
+    /// 힌트 타이머 코루틴
+    /// </summary>
+    private System.Collections.IEnumerator HintTimerCoroutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        // 여전히 WaitingForAction 상태이면 힌트 표시 (runReport는 ShowHint() 내부에서 자동 생성)
+        if (currentState == TutorialState.WaitingForAction)
+        {
+            ShowHint();
+        }
+    }
+
+    /// <summary>
     /// 힌트 상태로 전환 (hintDelaySeconds 후 자동 호출 예정)
     /// </summary>
     public void ShowHint()
     {
+        // runReport가 없으면 자동 생성
+        if (runReport == null)
+        {
+            EnsureRunReportExists("힌트 표시 시 자동 생성");
+        }
+
         // C. 힌트 표시: HINT_SHOWN 이벤트 + summary.hintShownCount++
         if (runReport != null)
         {
@@ -366,6 +595,12 @@ public class TutorialController : MonoBehaviour
         failCount++;
         Debug.Log($"실패 발생. 실패 횟수: {failCount}");
 
+        // runReport가 없으면 자동 생성
+        if (runReport == null)
+        {
+            EnsureRunReportExists("첫 번째 실패 시 자동 생성");
+        }
+
         // C. 실패: FAIL 이벤트 + summary.failCount++
         if (runReport != null)
         {
@@ -373,6 +608,7 @@ public class TutorialController : MonoBehaviour
             var failData = new { failCount = failCount, state = currentState.ToString() };
             runReport.AddEvent(TutorialEventType.FAIL, failData);
             runReport.summary.failCount = failCount;
+            Debug.Log($"[TutorialController] FAIL 이벤트 로깅 완료 (failCount: {failCount})");
         }
 
         if (policyApplier == null)
@@ -448,15 +684,18 @@ public class TutorialController : MonoBehaviour
     {
         if (runReport == null) return;
 
-        // summary 최종화
+        // 실제 duration 계산 (tutorialStartTime 기준)
+        float actualDuration = Time.time - tutorialStartTime;
+
+        // summary 최종화 (실제 duration 전달)
         runReport.summary.damageTaken = damageTaken;
-        runReport.FinalizeSummary(result, endReason);
+        runReport.FinalizeSummary(result, endReason, actualDuration);
 
         // RUN_END 이벤트 추가 (summary.failCount 사용 - 리셋 전 값)
         runReport.AddEvent(TutorialEventType.RUN_END, new { 
             result = result, 
             endReason = endReason,
-            durationSeconds = Time.time - tutorialStartTime,
+            durationSeconds = actualDuration,
             failCount = runReport.summary.failCount, // summary에 저장된 실제 failCount 사용
             damageTaken = damageTaken
         });
@@ -477,6 +716,22 @@ public class TutorialController : MonoBehaviour
             return;
         }
 
+        // policyJson이 비어있으면 policy를 JSON으로 변환
+        if (string.IsNullOrEmpty(policyJson))
+        {
+            policyJson = policy.ToJson();
+        }
+
+        // variant와 tutorialVersion이 비어있으면 기본값 보장
+        if (string.IsNullOrEmpty(policy.variant))
+        {
+            policy.variant = "A";
+        }
+        if (string.IsNullOrEmpty(policy.tutorialVersion))
+        {
+            policy.tutorialVersion = "1.0.0";
+        }
+
         // 기존 RunReport가 있으면 버림
         if (runReport != null)
         {
@@ -493,27 +748,29 @@ public class TutorialController : MonoBehaviour
         int seed = UnityEngine.Random.Range(0, int.MaxValue);
         runReport = new RunReport(policy, policyJson, seed);
         
-        // RUN_START 이벤트 추가
+        // RUN_START 이벤트 추가 (variant와 version 보장)
         runReport.AddEvent(TutorialEventType.RUN_START, new
         {
             appVersion = Application.version,
-            policyVariant = policy.variant,
-            tutorialVersion = policy.tutorialVersion,
+            policyVariant = string.IsNullOrEmpty(policy.variant) ? "A" : policy.variant,
+            tutorialVersion = string.IsNullOrEmpty(policy.tutorialVersion) ? "1.0.0" : policy.tutorialVersion,
             reason = "정책 버튼 클릭"
         });
 
         // 버튼 클릭 시점에 즉시 파일 저장
         string reportsDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Reports");
         runReport.summary.damageTaken = 0;
-        runReport.FinalizeSummary("START", "정책 버튼 클릭");
+        float buttonClickDuration = Time.time - tutorialStartTime;
+        runReport.FinalizeSummary("START", "정책 버튼 클릭", buttonClickDuration);
         runReport.AddEvent(TutorialEventType.RUN_END, new
         {
             result = "START",
             endReason = "정책 버튼 클릭",
-            durationSeconds = 0,
+            durationSeconds = buttonClickDuration,
             failCount = 0,
             damageTaken = 0
         });
         runReport.SaveToFile(reportsDirectory);
     }
 }
+

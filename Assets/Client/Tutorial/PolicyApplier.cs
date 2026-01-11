@@ -147,26 +147,11 @@ public class PolicyApplier : MonoBehaviour
             float newHintDelay = GetHintDelaySeconds();
             Debug.Log($"[PolicyApplier] 힌트 타이머를 {newHintDelay}초로 재설정했습니다 (WaitingForAction 상태였음)");
 
-            // 코루틴으로 힌트 타이밍 재시작
-            StopAllCoroutines();
-            StartCoroutine(DelayedHintCoroutine(newHintDelay));
+            // TutorialController의 힌트 타이머를 재시작
+            tutorialController.RestartHintTimer();
         }
     }
 
-    /// <summary>
-    /// 지연된 힌트 표시 코루틴
-    /// </summary>
-    private IEnumerator DelayedHintCoroutine(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-
-        if (tutorialController != null && 
-            tutorialController.GetCurrentState() == TutorialState.WaitingForAction)
-        {
-            tutorialController.ShowHint();
-            Debug.Log($"[PolicyApplier] {delay}초 지연 후 힌트를 표시했습니다");
-        }
-    }
 
     /// <summary>
     /// UI 토글 갱신
