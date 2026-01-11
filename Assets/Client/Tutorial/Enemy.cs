@@ -12,6 +12,8 @@ public class Enemy : MonoBehaviour
     [SerializeField] private int currentHP;
 
     [Header("데미지 설정")]
+    [Tooltip("전투 시작 지연 시간 (초). 힌트가 표시되기 전에 전투가 시작되지 않도록 조정할 수 있습니다.")]
+    [SerializeField] private float combatStartDelay = 5.0f;
     [SerializeField] private int damageAmount = 1;
     [SerializeField] private float damageInterval = 1.0f; // 일정 간격으로 데미지
     [SerializeField] private bool useProximityDamage = false; // 플레이어가 가까우면 데미지
@@ -22,6 +24,8 @@ public class Enemy : MonoBehaviour
     [SerializeField] private Player targetPlayer;
 
     private float lastDamageTime = 0f;
+    private float combatStartTime = 0f;
+    private bool combatStarted = false;
 
     // 이벤트: 플레이어에게 데미지를 입혔을 때 발생
     public System.Action OnPlayerDamaged;
@@ -41,7 +45,12 @@ public class Enemy : MonoBehaviour
             Debug.LogWarning("[Enemy] Player를 찾을 수 없습니다!");
         }
 
+        // 전투 시작 시간 기록
+        combatStartTime = Time.time;
+        combatStarted = false;
+        
         Debug.Log($"[Enemy] 초기화 완료. HP: {currentHP}/{maxHP}");
+        Debug.Log($"[Enemy] 전투 시작 지연: {combatStartDelay}초");
     }
 
     private void Update()
@@ -53,6 +62,20 @@ public class Enemy : MonoBehaviour
 
         // 플레이어가 사망했으면 공격 중단
         if (targetPlayer.IsDefeated()) return;
+
+        // 전투 시작 지연 시간 체크
+        if (!combatStarted)
+        {
+            if (Time.time - combatStartTime >= combatStartDelay)
+            {
+                combatStarted = true;
+                Debug.Log($"[Enemy] 전투 시작! (지연 시간 {combatStartDelay}초 경과)");
+            }
+            else
+            {
+                return; // 전투 시작 전이면 공격하지 않음
+            }
+        }
 
         // 일정 간격으로 데미지 주기
         if (Time.time - lastDamageTime >= damageInterval)

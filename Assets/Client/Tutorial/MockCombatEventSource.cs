@@ -9,6 +9,8 @@ public class MockCombatEventSource : MonoBehaviour, ICombatEventSource
 {
     [Header("테스트 설정")]
     [SerializeField] private bool autoSimulate = false;
+    [Tooltip("전투 시작 지연 시간 (초). 힌트가 표시되기 전에 전투가 시작되지 않도록 조정할 수 있습니다.")]
+    [SerializeField] private float combatStartDelay = 5.0f;
     [SerializeField] private float damageInterval = 3.0f;
     [SerializeField] private float enemyDefeatDelay = 10.0f;
 
@@ -28,8 +30,11 @@ public class MockCombatEventSource : MonoBehaviour, ICombatEventSource
 
     private System.Collections.IEnumerator SimulateCombat()
     {
+        // 전투 시작 지연 (힌트가 표시될 시간 확보)
+        Debug.Log($"[MockCombat] 전투 시작 지연: {combatStartDelay}초 대기 중...");
+        yield return new WaitForSeconds(combatStartDelay);
+        
         // 플레이어가 공격
-        yield return new WaitForSeconds(1.0f);
         OnPlayerHit?.Invoke();
         Debug.Log("[MockCombat] 플레이어 공격!");
 

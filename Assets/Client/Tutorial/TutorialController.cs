@@ -36,6 +36,10 @@ public class TutorialController : MonoBehaviour
     // 로그 수집
     private float tutorialStartTime;
     private int damageTaken = 0;
+    
+    // 힌트 타이머 관련
+    private float currentHintDelay = 0f; // 현재 사용 중인 힌트 지연 시간
+    private float hintTimerStartTime = 0f; // 힌트 타이머 시작 시간
 
     // RunReport (메모리 버퍼)
     private RunReport runReport;
@@ -76,6 +80,8 @@ public class TutorialController : MonoBehaviour
 
         // 초기 상태로 전환
         ChangeState(TutorialState.Init);
+        
+        // Init → WaitingForAction 전환은 InitializeRunReportCoroutine() 내에서 처리됨
     }
 
     /// <summary>
@@ -104,6 +110,14 @@ public class TutorialController : MonoBehaviour
                     // policyJson이 비어있어도 policy가 있으면 생성 가능 (policy.ToJson()으로 생성)
                     // 정책이 준비되었으므로 RunReport 생성
                     CreateRunReport(policy, policyJson);
+                    
+                    // RunReport 생성 후 Init → WaitingForAction 전환
+                    if (currentState == TutorialState.Init)
+                    {
+                        yield return null; // 한 프레임 대기하여 RunReport 생성 완료 보장
+                        StartWaitingForAction();
+                    }
+                    
                     yield break;
                 }
             }
@@ -116,6 +130,13 @@ public class TutorialController : MonoBehaviour
         Debug.LogWarning("[TutorialController] PolicyApplier 초기화 대기 시간 초과. 기본 정책을 사용합니다.");
         TutorialPolicy defaultPolicy = TutorialPolicy.GetDefault();
         CreateRunReport(defaultPolicy, defaultPolicy.ToJson());
+        
+        // RunReport 생성 후 Init → WaitingForAction 전환
+        if (currentState == TutorialState.Init)
+        {
+            yield return null; // 한 프레임 대기하여 RunReport 생성 완료 보장
+            StartWaitingForAction();
+        }
     }
 
     /// <summary>
@@ -163,18 +184,17 @@ public class TutorialController : MonoBehaviour
             policy.maxFailCount = 3;
         }
         
-        // policyJson이 비어있거나 정책이 수정되었으면 policy를 JSON으로 재생성
+        // policyJson이 비어있으면 policy를 JSON으로 생성
+        // 정책 필드가 수정되었어도 원본 policyJson은 보존 (원본 정책 데이터 유지)
         if (string.IsNullOrEmpty(policyJson))
         {
             Debug.LogWarning("[TutorialController] CreateRunReport: policyJson이 비어있어 policy.ToJson()을 사용합니다.");
             policyJson = policy.ToJson();
         }
+        // policyJson이 있으면 원본 그대로 사용 (정책 객체는 수정되었지만 원본 JSON 보존)
         else
         {
-            // policyJson이 있지만 정책이 수정되었으면 재생성
-            // (variant나 tutorialVersion이 수정되었을 수 있음)
-            policyJson = policy.ToJson();
-            Debug.Log("[TutorialController] CreateRunReport: 정책이 수정되어 policyJson을 재생성했습니다.");
+            Debug.Log("[TutorialController] CreateRunReport: 원본 policyJson을 사용합니다 (정책 객체는 수정되었지만 원본 JSON 보존).");
         }
         
         // policyJson이 여전히 비어있으면 에러
@@ -531,6 +551,9 @@ public class TutorialController : MonoBehaviour
         if (policyApplier == null) return;
 
         float hintDelay = policyApplier.GetHintDelaySeconds();
+        currentHintDelay = hintDelay; // 실제 사용할 지연 시간 저장
+        hintTimerStartTime = Time.time; // 타이머 시작 시간 기록
+        Debug.Log($"[TutorialController] 힌트 타이머 시작 - hintDelay: {hintDelay}초 (정책 값)");
         StartCoroutine(HintTimerCoroutine(hintDelay));
     }
 
@@ -577,9 +600,19 @@ public class TutorialController : MonoBehaviour
         // C. 힌트 표시: HINT_SHOWN 이벤트 + summary.hintShownCount++
         if (runReport != null)
         {
-            float hintDelay = policyApplier?.GetHintDelaySeconds() ?? 3.0f;
-            runReport.AddEvent(TutorialEventType.HINT_SHOWN, new { hintDelay = hintDelay });
+            // 실제 경과 시간 계산 (정책 값과 실제 경과 시간 모두 기록)
+            float actualElapsedTime = hintTimerStartTime > 0 ? (Time.time - hintTimerStartTime) : 0f;
+            float policyHintDelay = currentHintDelay > 0 ? currentHintDelay : (policyApplier?.GetHintDelaySeconds() ?? 3.0f);
+            
+            // 정책 값과 실제 경과 시간 중 정책 값을 사용 (정책 값이 정확함)
+            float hintDelay = policyHintDelay;
+            
+            runReport.AddEvent(TutorialEventType.HINT_SHOWN, new { 
+                hintDelay = hintDelay,
+                actualElapsedTime = actualElapsedTime > 0 ? actualElapsedTime : hintDelay
+            });
             runReport.summary.hintShownCount++;
+            Debug.Log($"[TutorialController] HINT_SHOWN 이벤트 로깅 - hintDelay: {hintDelay}초 (정책 값), 실제 경과: {actualElapsedTime:F3}초");
         }
 
         ChangeState(TutorialState.Hint);
