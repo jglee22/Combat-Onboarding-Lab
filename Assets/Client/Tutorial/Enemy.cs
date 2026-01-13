@@ -158,5 +158,18 @@ public class Enemy : MonoBehaviour
     {
         return currentHP <= 0;
     }
+
+    /// <summary>
+    /// 적 리셋 (HP 회복, 전투 재시작용)
+    /// </summary>
+    public void ResetEnemy()
+    {
+        currentHP = maxHP;
+        combatStartTime = Time.time;
+        combatStarted = false;
+        lastDamageTime = 0f;
+        Debug.Log($"[Enemy] 리셋 완료. HP: {currentHP}/{maxHP}");
+        Debug.Log($"[Enemy] 전투 시작 지연: {combatStartDelay}초");
+    }
 }
 

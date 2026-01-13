@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// 정책 변화가 화면에서 보이게 하는 최소 UI:
 /// - TMP 텍스트: Current State / FailCount / Policy Variant / HintDelay
 /// - 화살표 GameObject: showArrow에 따라 On/Off
-/// - 버튼 2개: Apply Policy A, Apply Policy B (런타임 정책 교체)
+/// - 버튼 2개: Apply Policy A, Apply Policy B (런타임 정책 교체 + 전투 시뮬레이션 자동 시작)
 /// </summary>
 public class TutorialUIController : MonoBehaviour
 {
@@ -25,6 +25,8 @@ public class TutorialUIController : MonoBehaviour
     [Header("의존성")]
     [SerializeField] private TutorialController tutorialController;
     [SerializeField] private PolicyApplier policyApplier;
+    [SerializeField] private Player player;
+    [SerializeField] private Enemy enemy;
 
     private void Start()
     {
@@ -37,6 +39,16 @@ public class TutorialUIController : MonoBehaviour
         if (policyApplier == null)
         {
             policyApplier = FindObjectOfType<PolicyApplier>();
+        }
+
+        if (player == null)
+        {
+            player = FindObjectOfType<Player>();
+        }
+
+        if (enemy == null)
+        {
+            enemy = FindObjectOfType<Enemy>();
         }
 
         // 정책 변경 이벤트 구독
@@ -144,7 +156,7 @@ public class TutorialUIController : MonoBehaviour
     }
 
     /// <summary>
-    /// 정책 적용 공통 로직
+    /// 정책 적용 공통 로직 + 실제 전투 시스템 시작
     /// </summary>
     private void ApplyPolicy(string policyJson, string policyName)
     {
@@ -169,6 +181,39 @@ public class TutorialUIController : MonoBehaviour
         
         // 3. 새 Run 시작
         tutorialController.StartNewRunWithPolicy(policy, currentPolicyJson);
+        
+        // 4. 전투 시스템 리셋 및 시작
+        ResetCombatSystem();
+        
+        Debug.Log($"[TutorialUI] Policy {policyName} 전투 튜토리얼 시작 - 스페이스바로 공격하세요!");
+    }
+
+    /// <summary>
+    /// 전투 시스템 리셋 (Player/Enemy HP 회복, 전투 재시작)
+    /// </summary>
+    private void ResetCombatSystem()
+    {
+        // Player 리셋
+        if (player != null)
+        {
+            player.ResetPlayer();
+        }
+        else
+        {
+            Debug.LogWarning("[TutorialUI] Player를 찾을 수 없습니다!");
+        }
+
+        // Enemy 리셋
+        if (enemy != null)
+        {
+            enemy.ResetEnemy();
+        }
+        else
+        {
+            Debug.LogWarning("[TutorialUI] Enemy를 찾을 수 없습니다!");
+        }
+
+        Debug.Log("[TutorialUI] 전투 시스템 리셋 완료 - 전투 시작!");
     }
 }
 

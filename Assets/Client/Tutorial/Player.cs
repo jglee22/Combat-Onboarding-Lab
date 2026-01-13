@@ -41,7 +41,7 @@ public class Player : MonoBehaviour
     /// <summary>
     /// 공격 처리
     /// </summary>
-    private void Attack()
+    public void Attack()
     {
         // 사망했으면 공격 불가
         if (IsDefeated())
@@ -93,6 +93,15 @@ public class Player : MonoBehaviour
     public bool IsDefeated()
     {
         return currentHP <= 0;
+    }
+
+    /// <summary>
+    /// 플레이어 리셋 (HP 회복, 전투 재시작용)
+    /// </summary>
+    public void ResetPlayer()
+    {
+        currentHP = maxHP;
+        Debug.Log($"[Player] 리셋 완료. HP: {currentHP}/{maxHP}");
     }
 }
 

@@ -52,6 +52,17 @@ public class MockCombatEventSource : MonoBehaviour, ICombatEventSource
         Debug.Log("[MockCombat] 에너미 처치!");
     }
 
+    /// <summary>
+    /// 전투 시뮬레이션 수동 시작 (정책 버튼 클릭 시 호출)
+    /// </summary>
+    public void StartCombatSimulation()
+    {
+        if (!autoSimulate)
+        {
+            StartCoroutine(SimulateCombat());
+        }
+    }
+
     // ============================================
     // 수동 트리거 메서드들 (에디터에서 테스트용)
     // ============================================

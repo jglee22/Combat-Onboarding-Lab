@@ -790,20 +790,10 @@ public class TutorialController : MonoBehaviour
             reason = "정책 버튼 클릭"
         });
 
-        // 버튼 클릭 시점에 즉시 파일 저장
-        string reportsDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Reports");
-        runReport.summary.damageTaken = 0;
-        float buttonClickDuration = Time.time - tutorialStartTime;
-        runReport.FinalizeSummary("START", "정책 버튼 클릭", buttonClickDuration);
-        runReport.AddEvent(TutorialEventType.RUN_END, new
-        {
-            result = "START",
-            endReason = "정책 버튼 클릭",
-            durationSeconds = buttonClickDuration,
-            failCount = 0,
-            damageTaken = 0
-        });
-        runReport.SaveToFile(reportsDirectory);
+        // Init → WaitingForAction 상태 전환 (전투 시작 준비)
+        ChangeState(TutorialState.WaitingForAction);
+        
+        Debug.Log($"[TutorialController] Policy {policy.variant} 전투 튜토리얼 시작 - 전투 로그 기록 중...");
     }
 }
 

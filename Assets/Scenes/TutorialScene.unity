@@ -413,6 +413,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autoSimulate: 0
+  combatStartDelay: 5
   damageInterval: 3
   enemyDefeatDelay: 10
 --- !u!114 &262910283
@@ -504,6 +505,7 @@ MonoBehaviour:
   applyPolicyBButton: {fileID: 716812401}
   tutorialController: {fileID: 262910284}
   policyApplier: {fileID: 262910285}
+  mockCombatEventSource: {fileID: 262910282}
 --- !u!1 &461188715
 GameObject:
   m_ObjectHideFlags: 0
@@ -954,6 +956,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHP: 3
   currentHP: 0
+  combatStartDelay: 5
   damageAmount: 1
   damageInterval: 1
   useProximityDamage: 0
